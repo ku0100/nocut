@@ -173,38 +173,74 @@ def dupeSelector(lines):
             print(" Not a valid choice ")
             continue
 
-def mainFunction():
-    os.system("clear")
-    print("#-------------------------------------------------------#")
-    print("#               HJ\'s NoCut (Version Ku.0)               #")
-    print("#  Input any form of MAC/IP address - kuwillia@umd.edu  #")
-    print("#-------------------------------------------------------#\n")
 
-    while True:
-        user_input = input("\n >> ")
-        user_input = user_input.replace(" ", "")
 
-        if (user_input.lower() == "exit"):
-            sys.exit("Exiting the program!")
-            break
-        elif (user_input == ""):
-            continue
-        # Netaddr reference (.valid_ipv4)
-        elif (valid_ipv4(user_input)):
-            ip_addr = user_input
-            uip = IpFinder(IPNetwork(user_input))
-            if (uip.umd_public_ip):
-                uip.printOutput()
-                command = dupe + " -i " + ip_addr
-                searchMacTable(command)
-            else:
-                print("\n %s is not a valid UMD IP" % (ip_addr))
-        elif (valid_mac(user_input)):
-            mac_addr = macStringCoversion(user_input)
-            command = dupe + " -m " + mac_addr
-            searchMacTable(command)
-        else:
-            print("%s is neither an IP or MAC. Please try again")
-            continue
+if len(sys.argv) > 1:
+	user_input = str(sys.argv[1])
 
-mainFunction()
+	# Input mac or ip
+	user_input = user_input.replace(" ","")  #remove all space
+
+	if user_input.lower() == "exit":
+			sys.exit( " Thank you for using NoCut - HJ ")
+			sys.exit()
+
+	elif valid_ipv4(user_input):
+			ip_addr = user_input
+			dip = IpFounder(IPNetwork(user_input))
+
+			if dip.is_umd_ip:
+					dip.print_output()
+					command = dupe+' -i '+ip_addr
+					search_mac_table(command)
+			else : print ip_addr ,"is not valid UMD IP"
+			sys.exit()
+
+	elif valid_mac(user_input):
+			mac_addr = mac_to_string(user_input)
+			command = dupe+' -m '+mac_addr
+			search_mac_table(command)
+
+	else:
+			print  user_input, "neither IP or MAC. please try again"
+			sys.exit()
+
+
+else:
+
+	os.system('clear')
+	print ('#-------------------------------------------------------#')
+	print ('#  Hi. HJ\'s NoCut! tracking switch port with mac or IP')
+	print ('#  Input any form of MAC or IP address - ddomu@umd.edu  ')
+	print ('#-------------------------------------------------------#\n')
+
+	while True:
+
+		# Input mac or ip
+		user_input = raw_input('\n ip address or mac address or exit to quit:')
+		user_input = user_input.replace(" ","")  #remove all space
+
+		if user_input.lower() == "exit":
+				sys.exit( " Thank you for using NoCut - HJ ")
+				break
+		elif user_input == "":
+				continue
+		elif valid_ipv4(user_input):
+				ip_addr = user_input
+				dip = IpFounder(IPNetwork(user_input))
+
+				if dip.is_umd_ip:
+						dip.print_output()
+						command = dupe+' -i '+ip_addr
+						search_mac_table(command)
+				else : print '\n ', ip_addr ,"is not valid UMD IP"
+
+		elif valid_mac(user_input):
+				mac_addr = mac_to_string(user_input)
+				command = dupe+' -m '+mac_addr
+				search_mac_table(command)
+
+		else:
+				print  user_input, "neither IP or MAC. please try again"
+				continue
+
