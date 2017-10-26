@@ -7,6 +7,8 @@ import socket
 
 from netaddr import *
 
+filepath = '/usr/local/telecom/wp/'
+
 def vlanIDLocator(vlan_name):
     networks_file = filepath + "networks"
     # Open networks.txt read-only
