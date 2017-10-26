@@ -12,6 +12,7 @@ from ipinfo import *
 mac_data_dir = "/net/mactables/data/"
 dupe = "/net/arpcache/bin/DupeChecker/"
 filepath = "/usr/local/telecom/wp"
+pinnaclefile = "/net/tms/pinnacle/downloads/prod/current/"
 
 
 # Check whether the building number exists in the MAC table directory
