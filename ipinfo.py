@@ -8,16 +8,32 @@ import socket
 from netaddr import *
 
 def pinnacle_get_switchport(jackID):
-        pinnacleports = pinnaclefile + "Export_Ports"
+    pinnacleports = pinnaclefile + "Export_Ports"
     # Open Pinncale_Ports file read-only
-        pinnacle_ports = open(pinnacleports, "r")
-        for i in pinnacle_ports:
-                ports = i.split()
-                if(ports[2].startswith(jackID)):
-                        pinnacle_ports.close()
-                        # Return VLAN column value from networks.txt
-                        switchport = ports[0] + ports[1]
-                        return switchport
+    pinnacle_ports = open(pinnacleports, "r")
+    for i in pinnacle_ports:
+        ports = i.split()
+        if(ports[2].startswith(jackID)):
+                pinnacle_ports.close()
+                # Return VLAN column value from networks.txt
+                switchport = ports[0] + ports[1]
+                return switchport
+
+def pinnacle_get_jackID(switchport):
+    pinnacleports = pinnaclefile + "Export_Ports"
+    # Open Pinncale_Ports file read-only
+    pinnacle_ports = open(pinnacleports, "r")
+    for i in pinnacle_ports:
+        ports = i.split()
+        switchANDport = ports[0] + ports[1]
+        if(switchANDport.startswith(switchport)):
+                pinnacle_ports.close()
+                # Return jackID from Export_Ports
+                switchport = ports[2]
+                return switchport
+
+
+
 
 
 
