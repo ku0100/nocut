@@ -1,4 +1,4 @@
-#! /usr/bin/env python3.6
+#!/usr/bin/env python
 
 import os
 import re
@@ -6,6 +6,36 @@ import sys
 import socket
 
 from netaddr import *
+pinnaclefile = "/net/tms/pinnacle/downloads/prod/current/"
+
+def pinnacle_get_switchport(jackID):
+    pinnacleports = pinnaclefile + "Export_Ports" 
+    # Open Pinncale_Ports file read-only
+    pinnacle_ports = open(pinnacleports, "r")
+    for i in pinnacle_ports:
+        ports = i.split()
+        if(ports[2].startswith(jackID)):
+                pinnacle_ports.close()
+                # Return VLAN column value from networks.txt
+                switchport = ports[0] + ports[1]
+		# make output pretty
+		switch = switchport.split("_")[0]
+		module = switchport.split("_")[1][:1]
+		port = switchport.split("_")[1][:-2]
+                return switch + " " + module + "/" + port
+
+def pinnacle_get_jackID(switchport):
+    pinnacleports = pinnaclefile + "Export_Ports"
+    # Open Pinncale_Ports file read-only
+    pinnacle_ports = open(pinnacleports, "r")
+    for i in pinnacle_ports:
+        ports = i.split()
+        switchANDport = ports[0] + ports[1]
+        if(switchANDport.startswith(switchport)):
+                pinnacle_ports.close()
+                # Return jackID from Export_Ports
+                switchport = ports[2]
+                return switchport
 
 filepath = '/usr/local/telecom/wp/'
 
@@ -121,3 +151,4 @@ if (__name__ == "__main__"):
         else:
             print("%s : Not a valid UMD IP, please enter again" % (valid_ip))
             continue
+
