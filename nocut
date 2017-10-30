@@ -1,11 +1,11 @@
-#! /usr/bin/env python3.6
+#!/usr/bin/env python
 
 import os
 import re
 import time
 import sys
 
-import ipaddress # This is for IP address validation
+#import ipaddress # This is for IP address validation
 from netaddr import *
 from ipinfo import *
 
@@ -21,6 +21,8 @@ def validBldg(bldg_num):
     bldg_dir = os.path.join(mac_data_dir, bldg_num)
     return os.path.exists(bldg_dir)
 
+def valid_jackID(jackID):
+    return True
 # MAC address search
 def macSearch(bldg_num, mac_addr, last_seen):
     if (bldg_num):
@@ -31,7 +33,7 @@ def macSearch(bldg_num, mac_addr, last_seen):
     last_seen = last_seen.split("-")
     last_seen = last_seen[0].split("/")
     last_seen = last_seen[2] + last_seen[0]
-    
+
     try:
         if (os.path.isdir(bldg_dir)):
             # Check only "YYYYMMDDhhmm" file format
@@ -89,7 +91,7 @@ def searchMacTable(command):
     # Multiple output handling
     lines = output.split("\n")
     lines = [line for line in lines if line != ""] # can this just say [line in lines if line != ""]??
-    
+
     # Single dupe handling
     if (len(lines) == 3):
         displaySwitchInfo(lines[2], command)
@@ -202,6 +204,10 @@ if len(sys.argv) > 1:
 			command = dupe+' -m '+mac_addr
 			search_mac_table(command)
 
+	elif valid_jackID(user_input):
+			jackID = user_input
+			print(pinnacle_get_switchport(jackID))
+
 	else:
 			print  user_input, "neither IP or MAC. please try again"
 			sys.exit()
@@ -240,6 +246,11 @@ else:
 				mac_addr = mac_to_string(user_input)
 				command = dupe+' -m '+mac_addr
 				search_mac_table(command)
+
+		elif valid_jackID(user_input):
+				jackID = user_input
+				print(pinnacle_get_switchport("jackID"))
+
 
 		else:
 				print  user_input, "neither IP or MAC. please try again"
