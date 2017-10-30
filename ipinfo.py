@@ -9,20 +9,17 @@ from netaddr import *
 pinnaclefile = "/net/tms/pinnacle/downloads/prod/current/"
 
 def pinnacle_get_switchport(jackID):
-    pinnacleports = pinnaclefile + "Export_Ports" 
+    pinnacle_ports_file = pinnaclefile + "Export_Ports"
     # Open Pinncale_Ports file read-only
-    pinnacle_ports = open(pinnacleports, "r")
+    pinnacle_ports = open(pinnacle_ports_file, "r")
     for i in pinnacle_ports:
         ports = i.split()
         if(ports[2].startswith(jackID)):
                 pinnacle_ports.close()
-                # Return VLAN column value from networks.txt
-                switchport = ports[0] + ports[1]
-		# make output pretty
-		switch = switchport.split("_")[0]
-		module = switchport.split("_")[1][:1]
-		port = switchport.split("_")[1][:-2]
-                return switch + " " + module + "/" + port
+                # Found matching line with Jack ID, save the switch name, module number, and interface number
+                module = ports[0][-1] # equal 1
+                switch = ports[0][:-2] # 003-1f-sw1
+                return switch + " " + module + "/" + ports[1] # 003-1f-sw1 1/14
 
 def pinnacle_get_jackID(switchport):
     pinnacleports = pinnaclefile + "Export_Ports"
