@@ -27,6 +27,7 @@ def pinnacle_get_switchport(jackID):
 			module = ports[0][-1] # equal 1
 			switch = ports[0][:-2] # 003-1f-sw1
 			return switch + " " + module + "/" + ports[1] # 003-1f-sw1 1/14
+	return "Jack ID not active"
 
 def find_vlan_id (vlan_name):
 
