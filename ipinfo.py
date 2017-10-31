@@ -1,149 +1,155 @@
 #!/usr/bin/env python
-
-import os
-import re
-import sys
-import socket
-
+################################################
+#	~ddomu/python/ipinfo.py
+#	HJ Park (ddomu@umd.edu ) 
+#----------------------------------------------
+#	Input : IP address
+#	Output : Vlan name, Vlan ID, Subnet Mask, Gateway 
+#
+################################################
 from netaddr import *
+import socket
+import os,sys,re
+filepath = '/usr/local/telecom/wp/'
 pinnaclefile = "/net/tms/pinnacle/downloads/prod/current/"
 
 def pinnacle_get_switchport(jackID):
-    pinnacle_ports_file = pinnaclefile + "Export_Ports"
-    # Open Pinncale_Ports file read-only
-    pinnacle_ports = open(pinnacle_ports_file, "r")
-    for i in pinnacle_ports:
-        ports = i.split()
-        if(ports[2].startswith(jackID)):
-                pinnacle_ports.close()
-                # Found matching line with Jack ID, save the switch name, module number, and interface number
-                module = ports[0][-1] # equal 1
-                switch = ports[0][:-2] # 003-1f-sw1
-                return switch + " " + module + "/" + ports[1] # 003-1f-sw1 1/14
 
-def pinnacle_get_jackID(switchport):
-    pinnacleports = pinnaclefile + "Export_Ports"
-    # Open Pinncale_Ports file read-only
-    pinnacle_ports = open(pinnacleports, "r")
-    for i in pinnacle_ports:
-        ports = i.split()
-        switchANDport = ports[0] + ports[1]
-        if(switchANDport.startswith(switchport)):
-                pinnacle_ports.close()
-                # Return jackID from Export_Ports
-                switchport = ports[2]
-                return switchport
+	jackID = jackID.upper()
+	pinnacle_ports_file = pinnaclefile + "Export_Ports"
+	# Open Pinncale_Ports file read-only
+	pinnacle_ports = open(pinnacle_ports_file, "r")
+	for i in pinnacle_ports:
+		if jackID in i:
+			ports = i.split()
+			pinnacle_ports.close()
+			# Found matching line with Jack ID, save the switch name, module number, and interface number
+			module = ports[0][-1] # equal 1
+			switch = ports[0][:-2] # 003-1f-sw1
+			return switch + " " + module + "/" + ports[1] # 003-1f-sw1 1/14
 
-def vlanIDLocator(vlan_name):
-    networks_file = filepath + "networks"
-    # Open networks.txt read-only
-    wp_networks = open(networks_file, "r")
-    for i in wp_networks:
-        if(i.startswith(vlan_name)):
-            vlans = i.split()
-            wp_networks.close()
-            # Return VLAN column value from networks.txt
-            return vlans[3]
+def find_vlan_id (vlan_name):
 
-class IpFinder:
+	net_file = filepath + 'networks'
+	wp_net = open (net_file,'r')
+	for x in wp_net:
+		if x.startswith(vlan_name) :
+			vlans = x.split()
+			wp_net.close()				# close networks.txt 
+			return vlans[3]				# return vlan id 
+	
+####################	IP address input 	####################
+class IpFounder:
 
-    def __init__(self, ip_addr):
-        self.ip_addr = ip_addr
-        wp_ips = filepath + "ipconfig"
-        try:
-            # Open ipconfig.txt read-only
-            ip_text = open(wp_ips, "r")
-            lines = wp_ips.readlines()
-            self.umd_public_ip = False
-            for line in lines:
-                if (line.startswith("#") == False):
-                    columns = line.split()
-                    if (len(columns) > 4 and columns[2] == "range"):
-                        # Netaddr reference (IPNetwork)
-                        ip_network = IPNetwork(columns[4])
-                        if (ip_addr in ip_network):
-                            self.umd_public_ip = True
-                            self.vlan_name = columns[0]
-                            self.vlan_id = vlanIDLocator(self.vlan_name)
-                            # Netaddr reference (.netmask)
-                            self.subnet_mask = ip_network.netmask
-                            self.gateway = ip_network[1]
-                            break
-            ip_text.close()
-        except FileNotFoundError:
-            print("Error: File not found", wp_ips)
-            sys.exit(3)
+	def __init__(self,ip_addr):
+		self.ip_addr = ip_addr 
+		ip_file = filepath + 'ipconfig'
+		try:
+			ip_txt = open(ip_file, 'r') 
+			lines = ip_txt.readlines()
+			self.is_umd_ip = False			
+			
+			for line in lines:
+				if not line.startswith("#"):				# ignore comment line 
+					words = line.split()
+					if(len(words) > 4 and words[2] == 'range'): 		# If the line has network range
+						ip_network = IPNetwork(words[4]) 		 		# ip_network object create
+						####################	Find IP address range  ####################
+						if ip_addr in ip_network:			 # If ip_addr is included in ip_network range
+							self.is_umd_ip = True
+							self.vlan_name = words[0]			 # vlan_name 
+							self.vlan_id = find_vlan_id(self.vlan_name)
+							self.subnet_mask = ip_network.netmask
+							self.gateway = ip_network[1] 
+							break
+									# ip_address, vlan name, vlan id, subnet mask, gateway 
+			ip_txt.close()
+		except FileNotFoundError:
+			print "Error : fail to open", ip_file
+			sys.exit(0)
+	def print_output(self):
+		print " IP addr      : ",self.ip_addr
+		print " vlan_id      : ",self.vlan_id
+		print " vlan_name    : ",self.vlan_name 		 
+		print " subnet mask  : ",self.subnet_mask	 
+		print " gateway      : ",self.gateway	 
+	
+			
 
-    def printOutput(self):
-        print(" IP Addr      : %s" % (self.ip_addr))
-        print(" vLAN ID      : %s" % (self.vlan_id))
-        print(" VLAN Name    : %s" % (self.vlan_name))
-        print(" Subnet Mask  : %s" % (self.subnet_mask))
-        print(" Gateway      : %s" % (self.gateway))
+class bldFounder:			
+	def __init__(self, vlan_name, vlan_number):
+		self.vlan_name = vlan_name
+		self.vlan_number = vlan_number 
 
-class BldgFinder:
+#		if not self.vlan_name: self_num=''			# Return Error 
+#		else:
+#			self.num = get_bld_number(vlan_name) 
+	
+	def get_bld_number(self,):
+		vlan_name = self.vlan_name
+		bld_pattern = re.compile ('(\d{1,3})[a-z]')
+		backbone_pattern = re.compile ('0[a-z]')
+		wifi_pattern = re.compile ('100[0-9][a-z]') 
+		css_voip_pattern = re.compile ('1011[a-z]')
+		ptx_pattern = re.compile ('1010[a-z]') 
+		fw_pattern = re.compile ('(\d{4})[a-z]')
+		
+		# case 1 : building network \d{1,3}\w  e.g. 3a to 369z 		
+		# case 2 : backbone network '0'\w
+		if wifi_pattern.match(vlan_name) : 
+			bld_number = 'wireless'
+			return bld_number
+		elif bld_pattern.match(vlan_name) or backbone_pattern.match(vlan_name): 
+			bld_number = re.sub('\D',"",vlan_name)
+			return bld_number
+		# case 3 : wireless network '100'\d\w
+		elif wifi_pattern.match(vlan_name) : 
+			bld_number = 'wireless'
+			return bld_number
+		# case 4 : CSS VoIP network '101'\d\w
+		elif css_voip_pattern.match(vlan_name) : 
+			bld_number = '224'
+			return bld_number
+		elif ptx_pattern.match(vlan_name) : 
+			bld_number = '10'
+			return bld_number 
+		# case 5 : \d{4}[a-z] 1115a ~ 5224e 
+		elif fw_pattern.match(vlan_name) :
+			bld_number = re.sub('\D',"",vlan_name)
+			bld_number = bld_number[1:]			# remove first numeric 
+			return bld_number 
+		return False
+			
+	
+####################	Main Function 	####################
+if __name__ == '__main__' : 		# python ipinfo.py 
+	os.system('clear')
 
-    def __init__(self, vlan_name, vlan_number):
-        self.vlan_name = vlan_name
-        self.vlan_number = vlan_number
+	while 1:
+		is_ip = raw_input('Enter an IP address or type "exit" to stop:')
+		is_ip = is_ip.replace(" ","")  #remove all space
 
-    def locateBldgNumber(self,):
-        vlan_name = self.vlan_name
-        bldg_pattern = re.compile("(\d{1,3})[a-z]")
-        backbone_pattern = re.compile("0[a-z]")
-        wifi_pattern = re.compile("100[0-9][a-z]")
-        css_pattern = re.compile("1011[a-z]")
-        ptx_pattern = re.compile("1010[a-z]")
-        fw_pattern = re.compile("(\d{4})[a-z]")
-        if (bldg_pattern.match(vlan_name)
-            or backbone_pattern.match(vlan_name)):
-            bldg_number = re.sub("\D", "", vlan_name)
-            return bldg_number
-        elif (wifi_pattern.match(vlan_name)):
-            bldg_number = "wireless"
-            return bldg_number
-        elif css_pattern.match(vlan_name):
-            bldg_number = "224"
-            return bldg_number
-        elif ptx_patter.match(vlan_name):
-            bldg_number = "10"
-            return bldg_number
-        elif fw_pattern.match(vlan_name):
-            bldg_number=re.sub("\D", "", vlan_name)
-            # Remove first number b/c firewall
-            bldg_number = bldg_number[1:]
-            return bldg_number
-        else:
-            return False
-
-# Python ipinfo.py
-if (__name__ == "__main__"):
-    os.system("clear")
-    while True:
-        valid_ip = input("\nEnter an IP address or type 'exit' to stop:\n> ")
-        valid_ip = valid_ip.replace(" ", "")
-        if (valid_ip == ""):
-            continue
-        elif (valid_ip.lower() == "exit"):
-            sys.exit("Exiting the program!")
-        # Netaddr reference (.valid_ipv4)
-        elif (valid_ipv4(valid_ip)):
-            ip_addr = IPNetwork(valid_ip)
-            uip = IpFinder(ip_addr)
-            if (uip.umd_public_ip == False):
-                print("%s : Not a valid UMD IP, please enter again"
-                    % (valid_ip))
-                continue
-            else:
-                print(" IPV4 Address : %s" % (ip_addr.ip))
-                print(" vLAN ID      : %s" % (uip.vlan_id))
-                print(" VLAN Name    : %s" % (uip.vlan_name))
-                print(" Subnet Mask  : %s" % (uip.subnet_mask))
-                print(" Gateway      : %s" % (uip.gateway))
-                bldg = BldgFinder(uip.vlan_name, uip.vlan_id)
-                print(" Building     : %s" % (bldg.locateBldgNumber()))
-                continue
-        else:
-            print("%s : Not a valid UMD IP, please enter again" % (valid_ip))
-            continue
-
+		if is_ip == "": 	continue
+		elif is_ip.lower() == "exit":
+			print ("Thank you for using ipinfo - HJ ")
+			break					
+		elif valid_ipv4(is_ip):				
+			ip_addr = IPNetwork(is_ip)
+			dip = IpFounder(ip_addr)
+	
+			if not dip.is_umd_ip:
+				print is_ip, " : NOT a valid UMD IP address, please try again" 
+				continue
+			else :
+				print "IPv4 address : ",ip_addr.ip
+				print "vlan_id      : ",dip.vlan_id
+				print "vlan_name    : ",dip.vlan_name 		 
+				print "subnet mask  : ",dip.subnet_mask	 
+				print "gateway      : ",dip.gateway	 
+				bld = bldFounder(dip.vlan_name,dip.vlan_id)
+				print "Building     : ",bld.get_bld_number()
+				continue
+		else: 
+			print  is_ip, ": NOT a valid IP address, please try again"
+			continue
+	

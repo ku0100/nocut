@@ -1,183 +1,170 @@
 #!/usr/bin/env python
-
-import os
-import re
-import time
-import sys
-
-#import ipaddress # This is for IP address validation
+################################################
+#       ~ddomu/python/NoCut.py
+#       HJ Park (ddomu@umd.edu )
+#       created on : 2015/02/15
+#----------------------------------------------
+#
+#       Input  : IP address or MAC address
+#       Output : IP, MAC,vlan, building- connected switch port
+#
+################################################
 from netaddr import *
+import os,re,time, datetime
+import fnmatch
 from ipinfo import *
 
-mac_data_dir = "/net/mactables/data/"
-dupe = "/net/arpcache/bin/DupeChecker/"
-filepath = "/usr/local/telecom/wp"
-pinnaclefile = "/net/tms/pinnacle/downloads/prod/current/"
+mac_data_dir = '/net/mactables/data/'
+dupe = '/net/arpcache/bin/DupeChecker'
+filepath = '/usr/local/telecom/wp/'
 
-
-# Check whether the building number exists in the MAC table directory
-# Returns True/False
-def validBldg(bldg_num):
-    bldg_dir = os.path.join(mac_data_dir, bldg_num)
-    return os.path.exists(bldg_dir)
+#
+# To check if the bld_number exist in mac_data_directory
+# return True or False
+def is_valid_bld(bld_number):
+        bld_dir = os.path.join(mac_data_dir, bld_number)
+        return os.path.exists(bld_dir)
 
 def valid_jackID(jackID):
     return True
-# MAC address search
-def macSearch(bldg_num, mac_addr, last_seen):
-    if (bldg_num):
-        bldg_dir = os.path.join(mac_data_dir, bldg_num)
-    else:
-        bldg_dir = mac_data_dir # if bldg not found, search all bldgs
-    found_switch = []
-    last_seen = last_seen.split("-")
-    last_seen = last_seen[0].split("/")
-    last_seen = last_seen[2] + last_seen[0]
 
-    try:
-        if (os.path.isdir(bldg_dir)):
-            # Check only "YYYYMMDDhhmm" file format
-            filename_pattern = re.compile(last_seen)
-            # Exception handling
-            for file in reversed(os.listdir(bldg_dir)):
-                path = bldg_dir + "/" + file
-                if ((time.time() - os.path.getctime(path))
-                    < (30 * 24 * 60 * 60)) and re.match(filename_pattern,
-                                                        file):
-                    f = open(path, "r")
-                    for line in f.readlines():
-                        if (mac_addr in line and line not in found_switch):
-                            found_switch.append(file)
-                            found_switch.append(line)
-                            # break
-                            return found_switch
-                        f.close()
-                    else:
-                        pass
-                return found_switch
-    except:
-        return 0
-
-def bldgNumInput():
-    i = 0
-    while (i < 2):
-        bldg_input = input("\n> Building num: ")
-        # Remove white spaces
-        bldg_input = bldg_input.replace(" ", "")
-        # Remove leading 0's
-        bldg_input = bldg_input.lstrip("0")
-        if (bldg_input.lower() == "exit"):
-            sys.exit("Exiting the program!")
-        elif (bldg_input == ""):
-            i += 1
-            continue
-        elif (validBldg(bldg_input)):
-            return bldg_input
+#
+# Mac address search
+# input :  bld_number and mac address
+# search mac address among files in building directory
+# return search result as form of [ date , found switch info]
+#
+#128.8.96.83      b8ca.3a75.2db8       01/05/2015-08:01     02/16/2015-13:31
+def search_mac(bld_number, mac_addr,last_seen):
+        if bld_number:
+		bld_dir = os.path.join (mac_data_dir, bld_number)       # valiid bld_number
         else:
-            print("Not a valid building number")
-            i += 1
-            continue
+		bld_dir = mac_data_dir           # if building number is not given, search all building
 
-def macStringCoversion(mac_input):
-    # Format mac to EUI
-    mac = EUI(mac_input)
-    # Specify cisco mac formatting (0123.45AB.CDEF)
-    mac.dialect = mac_cisco
-    mac_addr = str(mac)
-    return mac_addr
-
-def searchMacTable(command):
-    output = os.popen(command).read()
-    # Multiple output handling
-    lines = output.split("\n")
-    lines = [line for line in lines if line != ""] # can this just say [line in lines if line != ""]??
-
-    # Single dupe handling
-    if (len(lines) == 3):
-        displaySwitchInfo(lines[2], command)
-    # Multiple dupe handling
-    elif (len(lines) > 3):
-        selectDupe(lines)
-    else:
-        print("\n No connected switch information found")
-
-def displaySwitchInfo(line, command=0):
-    line = line.split()
-    ip_addr = line[0]
-    mac_addr = macStringConversion(line[1])
-    first_seen = line[2]
-    last_seen = line[3]
-
-    # Netaddr reference (IPNetwork)
-    ip_addr = IPNetwork(ip_addr)
-    # ipinfo.py reference (IpFinder)
-    uip = IpFinder(ip_addr)
-    if (command is 0):
-        pass
-    elif ("-m" in command):
-        uip.printOutput()
-    print("MAC          : %s" % (mac_addr))
-
-    bldg = BldgFinder(uip.vlan_name, uip.vlan_id)
-    # ipinfo.py reference (locateBldgNumber)
-    bldg_guess = bldg.locateBldgNumber()
-    if (bldg_guess == "0"):
-        print(" Backbone Network device")
-    else:
-        switch_info = macSearch(bldg_guess, mac_addr, last_seen)
-        j = 0
-        while (j < 2):
-            if (switch_info):
-                switch = switch_info[1].split("\t")
-                print("\n------------------------------------------------")
-                print(" History      : %s \t %s" % (switch[0], switch[2]))
-                print(" Date         : %s " % (switch_info[0]))
-                protocol = "~kuwillia/Python/ssh2.pl "
-                switch_connect = (protocol + switch[0] + " " + mac_addr)
-                print("------------------------------------------------")
-                print(" Searching    : %s" % (switch[0]))
-                output = os.popen(switch_connect).read()
-                print(output)
-                print("------------------------------------------------")
-                break
-            else:
-                print("\n Cannot find in building %s" % (bldg_guess))
-                i += 1
-                bldg_guess = bldgNumInput()
-                if (bldg_guess > 0):
-                    switch_info = macSearch(bldg_guess, mac_addr, last_seen)
-
-def dupeSelector(lines):
-    k = 0
-    print
-    print(" -------------------------------- Dupe Result --------------------------------")
-    print("          IP             |         MAC     |     First Seen     |    Last Seen ")
-    for line in lines[2:]:
-        l = line.split()
-        if (len(l) == 4):
-            k += 1
-            print("%s) %s      %s    %s    %s" % (k, l[0], l[1], l[2], l[3]))
-    print(" ------------------------------------------------------------------------------")
-
-    while True:
-        number = input("\n Select number for detailed switch info >> ")
-        if (number.lower() == "exit"):
-            sys.exit("Exiting the program!")
-        elif (number == ""):
-            pass
+        found_switch =[]
+        last_seen = last_seen.split('-')
+        last_seen = last_seen[0].split('/')
+        last_seen = last_seen[2]+last_seen[0]
         try:
-            int(number)
-            if (0 < int(number) <= k):
-                displaySwitchInfo(lines[int(number) + 1], "-m")
-            else:
-                print(" Not a valid choice ")
-                pass
+                if os.path.isdir(bld_dir):
+                        fname_pattern = re.compile(last_seen)           #check only "YYYYMMDDhhmm" file format
+                        for file in reversed(os.listdir(bld_dir)):      # !!!! Exception Handling
+                                path = bld_dir+'/'+file #something like /net/mactables/data/115/201410141640
+                                if ((time.time() - os.path.getctime(path)) < (30*24*60*60)) and re.match(fname_pattern,file) :  # check files created less than 90days
+                                        f = open(path,'r')                                                                            # !!! Exception Handling for not accessing this file
+                                        for line in f.readlines():
+                                                if mac_addr in line and line not in found_switch :
+                                                        found_switch.append(file)
+                                                        found_switch.append(line)
+                                                        #break
+                                                        return found_switch
+                                        f.close()
+                                else:   
+					pass
+                        return found_switch
         except:
-            print(" Not a valid choice ")
-            continue
+                return 0
+
+def input_bld_num():
+        t = 0
+        while t<2:
+                bld_input = raw_input('\n Building num:')
+                bld_input = bld_input.replace(" ","")  #remove all space
+                bld_input = bld_input.lstrip("0")
+
+                if bld_input.lower() == 'exit' : sys.exit( " Thank you for using NoCut - HJ ")
+                elif bld_input == "":
+                        t = t+1
+                        continue
+                elif is_valid_bld(bld_input) : return bld_input
+                else :
+                        print " Not valid building number "
+                        t = t+1
+                        continue
+# Any mac address input to cisco format as 0040.8c97.94df
+def mac_to_string(mac_input):
+        mac = EUI(mac_input)
+        mac.dialect = mac_cisco
+        mac_addr = str(mac)
+        return mac_addr
+
+def search_mac_table (command):
+        output = os.popen(command).read()
+        lines= output.split('\n')# Multi output handling
+        lines = [line for line in lines if line != '']
+        if len(lines) == 3 :                    # single dupe result handling
+                show_sw_info(lines[2],command)
+        elif len(lines) > 3 :                   # multiple dupe result handling
+                select_dupe_result(lines)
+        else : print "\n No connected switch info found"
+
+def show_sw_info (line,command=0):
+                e = line.split()
+                ip_addr = e[0]
+                mac_addr = mac_to_string(e[1])
+                first_seen = e[2]
+                last_seen = e[3]
+
+                ip_addr = IPNetwork(ip_addr)
+                dip = IpFounder(ip_addr)
+                if command is 0 : pass
+                elif '-m' in command :  dip.print_output()
+                print " MAC          : ",mac_addr
+
+                bld = bldFounder(dip.vlan_name,dip.vlan_id)
+                bld_guess = bld.get_bld_number()
+                if bld_guess =='0' : print " Backbone network device "
+		else:
+			sw_info = search_mac(bld_guess,mac_addr,last_seen)	
+                        i=0
+                        while i<2:
+                                if sw_info:
+                                        sw = sw_info[1].split('\t')
+                                        print "\n------------------------------------------------"
+                                        print " History      : ",sw[0],'\t', sw[2]
+                                        print " Date         : ",sw_info[0]
+                                        sw_connect = "~kuwillia/Python/ssh2.pl "+sw[0]+' '+mac_addr
+                                        print "------------------------------------------------"
+                                        print " Searching    :", sw[0]
+                                        output = os.popen(sw_connect).read()
+                                        print output ,"------------------------------------------------"
+                                        break
+                                else:
+                                        print "\n Cannot find in building ", bld_guess
+                                        i = i+1
+                                        bld_guess = input_bld_num()
+                                        if bld_guess > 0:
+                                                sw_info = search_mac(bld_guess,mac_addr,last_seen)
+
+def select_dupe_result(lines):
+                i = 0;
+                print " -------------------------------- Dupe Result --------------------------------"
+                print "          IP             |         MAC     |     First Seen     |    Last Seen "
+                for line in lines[2:]:
+                        e = line.split()
+                        if len(e) is 4 :
+                                i +=1
+                                print " ",i, ")", e[0], '      ',  e[1] ,'    ', e[2],'    ', e[3]
+                print " ------------------------------------------------------------------------------"
+
+                while True:
+                        number = raw_input ("\n Select number for detail switch info >> " )
+                        if number.lower() ==  "exit" : sys.exit( " Thank you for using NoCut - HJ ")
+                        elif number == "" : pass
+                        try :
+                                int(number)
+                                if      0 < int(number) <= i :
+                                        show_sw_info(lines[int(number)+1],'-m')
+                                        break
+                                else :
+                                        print " Not a valid number"
+                                        pass
+                        except :
+                                print " Not a valid number "
+                                continue
 
 
-
+####################    Main Function   ####################
 if len(sys.argv) > 1:
 	user_input = str(sys.argv[1])
 
@@ -247,12 +234,61 @@ else:
 				command = dupe+' -m '+mac_addr
 				search_mac_table(command)
 
-		elif valid_jackID(user_input):
-				jackID = user_input
-				print(pinnacle_get_switchport("jackID"))
-
-
 		else:
 				print  user_input, "neither IP or MAC. please try again"
 				continue
+
+
+#----------------------------------------------------------------------
+#               Flow chart of nocut
+#
+#
+#  /----------------------/
+# /  IP or MAC input     /
+#/----------+-----------/
+#           |
+#           |
+#           |
+#   +------------------------+
+#   |         DupeCheck      |
+#   |   Search mac table     |
+#   +-------+----------------+
+#           |
+#
+#-----------------------------------------------------------------------
+# Input (ip address or mac address or 'exit')
+#       exit -> exit script
+#       1) ip ----IP info ----> search_mac_table-
+#       1) mac ---------------> search_mac_table-
+#                                                2-1) if unique DupeChecker result
+#                                                                       3-1) show_sw_info (Dupecheck result)
+#                                                                                       4-1) search_mac(bld_number, mac_addr,last_seen):
+#                                                2-2) more than one result ->
+#                                                                       3-2) select_dupe_result(lines):
+#                                                                        select 1) 2) 3)
+#                                                                                       4-1) search_mac(bld_number, mac_addr,last_seen):
+#
+#
+#
+#-----------------------------------------------------------------------
+
+#------------------------ subprocess to call dupe ---------------#
+#getDupe(ip,user_input) result
+#Searching for usage since 1/1/2015.
+#IP Address       MAC Address          First Seen           Last Seen
+#128.8.96.83      b8ca.3a75.2db8       01/05/2015-08:01     02/16/2015-13:31
+
+# ------- mac data
+# 997-1a-sw1    246     Fa0/38  c03f.d579.7379
+
+# -------- vlan_name no match builidng
+#274    0a      ap4318-102  a i     88f0.3195.6870  ap3702i 10.96.133.207
+
+#IP addr      :  128.8.5.4/32   MAC          :  0010.f31e.d2ec
+
+# not able to ssh
+#362    1h      apGateJ a i     e05f.b943.adc9  ap3502e 10.96.158.238
+
+# Multiple dupe result test
+# 266   0a      ups         a i 00c0.b785.628e  apc     10.96.133.15
 
