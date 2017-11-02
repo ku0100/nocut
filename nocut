@@ -194,6 +194,7 @@ if len(sys.argv) > 1:
 	elif valid_jackID(user_input):
 			jackID = user_input
 			print(pinnacle_get_switchport(jackID))
+                        print(pinnacle_get_IP(jackID))
 
 	else:
 			print  user_input, "neither IP or MAC. please try again"
