@@ -6,7 +6,6 @@
 
 import time
 
-import importlib.util
 import paramiko
 import getpass
 from nocut3 import *
@@ -17,43 +16,53 @@ def sshClient(hostname = "115-2f-sw1", port=22):
     # Below is policy that will automatically add missing host keys
     sshClient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     sshClient.load_system_host_keys()
-    username = input("username>>> ")
-    password = getpass.getpass("password>>> ")
-    cisco_device = {"device_type": "cisco_ios",
-                    "ip": hostname,
-                    "username": username,
-                    "password": password,
-                    "secret": secret}
-    net_device = ConnectHandler(**cisco_device)
 
-    # enter enable by default
-    net_device.enable()
+    while True:
+        username = input("username>>> ")
+        password = getpass.getpass("password>>> ")
+        cisco_device = {"device_type": "cisco_ios",
+                        "ip": hostname,
+                        "username": username,
+                        "password": password,
+                        "secret": secret}
+        try:
+            print("Connecting to device...")
+            net_device = ConnectHandler(**cisco_device)
+            net_device.enable()
+            break
+        except:
+            print("Invalid credentials")
+            continue
+
     while True:
         command = input(hostname + "#")
-        if (command.lower() == "exit"):
+        if command.lower() == "exit":
             save_changes = input("Save any config changes? (y/n)>>> ")
-            if (save_changes.lower() == "y"):
+            if save_changes.lower() == "y":
                 output = net_device.send_command("copy run start")
                 print(output)
                 returnToNocut(net_device, save_changes=True)
+                break
             else:
                 returnToNocut(net_device, save_changes=False)
-        elif (command.lower().startswith("con")):
+                break
+        elif command.lower().startswith("con"):
             output = net_device.send_config_set(command,
                                                 exit_config_mode=False)
             print(output)
             while True:
                 command = input(hostname + "(config)#")
-                if (command.lower() == "exit"):
+                if command.lower() == "exit":
+                    net_device.exit_config_mode()
                     break
-                elif (command.lower().startswith("int")):
+                elif command.lower().startswith("int"):
                     output = net_device.send_config_set(command,
                                                         exit_config_mode=False)
                     print(output)
                     while True:
                         command = input(hostname + "(config-if)#")
-                        if (command.lower() == "exit"):
-                            exit_config_mode=True
+                        if command.lower() == "exit":
+                            net_device.exit_config_mode()
                             break
                         else:
                             output = net_device.send_config_set(command,
@@ -68,7 +77,7 @@ def sshClient(hostname = "115-2f-sw1", port=22):
             continue
 
 def returnToNocut(device, save_changes=False):
-    if (save_changes):
+    if save_changes:
         message = "[Config changes saved]"
     else:
         message = "[Config changes NOT saved]"
@@ -76,6 +85,8 @@ def returnToNocut(device, save_changes=False):
     # close ssh connection first
     device.disconnect()
     time.sleep(3)
-    nocut.mainFunction()
+    mainFunction()
 
-sshClient()
+# if sshClient.py is called directly, sshClient()
+if __name__ == "__main__":
+    sshClient()

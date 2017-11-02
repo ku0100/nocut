@@ -9,6 +9,7 @@ import ipaddress # This is for IP address validation
 from netaddr import *
 from ipinfo import *
 from sshClient import *
+from nocportal import *
 
 # importlib.util to point directly to nocut: 
 # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
@@ -27,7 +28,7 @@ def validBldg(bldg_num):
 
 # MAC address search
 def macSearch(bldg_num, mac_addr, last_seen):
-    if (bldg_num):
+    if bldg_num:
         bldg_dir = os.path.join(mac_data_dir, bldg_num)
     else:
         bldg_dir = mac_data_dir # if bldg not found, search all bldgs
@@ -37,7 +38,7 @@ def macSearch(bldg_num, mac_addr, last_seen):
     last_seen = last_seen[2] + last_seen[0]
     
     try:
-        if (os.path.isdir(bldg_dir)):
+        if os.path.isdir(bldg_dir):
             # Check only "YYYYMMDDhhmm" file format
             filename_pattern = re.compile(last_seen)
             # Exception handling
@@ -48,7 +49,7 @@ def macSearch(bldg_num, mac_addr, last_seen):
                                                         file):
                     f = open(path, "r")
                     for line in f.readlines():
-                        if (mac_addr in line and line not in found_switch):
+                        if mac_addr in line and line not in found_switch:
                             found_switch.append(file)
                             found_switch.append(line)
                             # break
@@ -62,18 +63,19 @@ def macSearch(bldg_num, mac_addr, last_seen):
 
 def bldgNumInput():
     i = 0
-    while (i < 2):
+    while i < 2:
         bldg_input = input("\n> Building num: ")
         # Remove white spaces
         bldg_input = bldg_input.replace(" ", "")
         # Remove leading 0's
         bldg_input = bldg_input.lstrip("0")
-        if (bldg_input.lower() == "exit"):
-            sys.exit("Exiting the program!")
-        elif (bldg_input == ""):
+        if bldg_input.lower() == "exit":
+            portalMenu()
+            break
+        elif bldg_input == "":
             i += 1
             continue
-        elif (validBldg(bldg_input)):
+        elif validBldg(bldg_input):
             return bldg_input
         else:
             print("Not a valid building number")
@@ -95,10 +97,10 @@ def searchMacTable(command):
     lines = [line for line in lines if line != ""] # can this just say [line in lines if line != ""]??
     
     # Single dupe handling
-    if (len(lines) == 3):
+    if len(lines) == 3:
         displaySwitchInfo(lines[2], command)
     # Multiple dupe handling
-    elif (len(lines) > 3):
+    elif len(lines) > 3:
         selectDupe(lines)
     else:
         print("\n No connected switch information found")
@@ -114,22 +116,22 @@ def displaySwitchInfo(line, command=0):
     ip_addr = IPNetwork(ip_addr)
     # ipinfo.py reference (IpFinder)
     uip = IpFinder(ip_addr)
-    if (command is 0):
+    if command is 0:
         pass
-    elif ("-m" in command):
+    elif "-m" in command:
         uip.printOutput()
     print("MAC          : %s" % (mac_addr))
 
     bldg = BldgFinder(uip.vlan_name, uip.vlan_id)
     # ipinfo.py reference (locateBldgNumber)
     bldg_guess = bldg.locateBldgNumber()
-    if (bldg_guess == "0"):
+    if bldg_guess == "0":
         print(" Backbone Network device")
     else:
         switch_info = macSearch(bldg_guess, mac_addr, last_seen)
         j = 0
-        while (j < 2):
-            if (switch_info):
+        while j < 2:
+            if switch_info:
                 switch = switch_info[1].split("\t")
                 print("\n------------------------------------------------")
                 print(" History      : %s \t %s" % (switch[0], switch[2]))
@@ -142,8 +144,8 @@ def displaySwitchInfo(line, command=0):
                 print(output)
                 print("------------------------------------------------")
                 switch_login = input("Login to device (y/n)?\n>>>> ")
-                if (switch_login.lower() == "y"):
-                    sshClient.sshClient(switch[0])
+                if switch_login.lower() == "y":
+                    sshClient.sshClient(hostname=switch[0])
                 break
             else:
                 print("\n Cannot find in building %s" % (bldg_guess))
@@ -159,20 +161,21 @@ def dupeSelector(lines):
     print("          IP             |         MAC     |     First Seen     |    Last Seen ")
     for line in lines[2:]:
         l = line.split()
-        if (len(l) == 4):
+        if len(l) == 4:
             k += 1
             print("%s) %s      %s    %s    %s" % (k, l[0], l[1], l[2], l[3]))
     print(" ------------------------------------------------------------------------------")
 
     while True:
         number = input("\n Select number for detailed switch info >> ")
-        if (number.lower() == "exit"):
-            sys.exit("Exiting the program!")
-        elif (number == ""):
+        if number.lower() == "exit":
+            portalMenu()
+            break
+        elif number == "":
             pass
         try:
             int(number)
-            if (0 < int(number) <= k):
+            if 0 < int(number) <= k:
                 displaySwitchInfo(lines[int(number) + 1], "-m")
             else:
                 print(" Not a valid choice ")
@@ -182,18 +185,17 @@ def dupeSelector(lines):
             continue
 
 def mainFunction():
-    print(sys.argv)
-    if (len(sys.argv) > 1):
-        if (valid_ipv4(str(sys.argv[1]))):
+    if len(sys.argv) > 1:
+        if valid_ipv4(str(sys.argv[1])):
             ip_addr = sys.argv[1]
             uip = IpFinder(IPNetwork(ip_addr))
-            if (uip.umd_public_ip):
+            if uip.umd_public_ip:
                 uip.printOutput()
                 command = dupe + " -i " + ip_addr
                 searchMacTable(command)
             else:
                 print("\n %s is not a valid UMD IP" % (sys.argv[1]))
-        elif (valid_mac(str(sys.argv[1]))):
+        elif valid_mac(str(sys.argv[1])):
             mac_addr = macStringCoversion(sys.argv[1])
             command = dupe + " -m " + mac_addr
             searchMacTable(command)
@@ -204,27 +206,28 @@ def mainFunction():
         print("#-------------------------------------------------------#")
         print("#               HJ\'s NoCut (Version Ku.0)               #")
         print("#  Input any form of MAC/IP address - kuwillia@umd.edu  #")
+        print("#                  Type 'exit' to exit                  #")
         print("#-------------------------------------------------------#\n")
 
         while True:
             user_input = input("\n >> ")
             user_input = user_input.replace(" ", "")
-            if (user_input.lower() == "exit"):
-                sys.exit("Exiting the program!")
+            if user_input.lower() == "exit":
+                portalMenu()
                 break
-            elif (user_input == ""):
+            elif user_input == "":
                 continue
             # Netaddr reference (.valid_ipv4)
-            elif (valid_ipv4(user_input)):
+            elif valid_ipv4(user_input):
                 ip_addr = user_input
                 uip = IpFinder(IPNetwork(user_input))
-                if (uip.umd_public_ip):
+                if uip.umd_public_ip:
                     uip.printOutput()
                     command = dupe + " -i " + ip_addr
                     searchMacTable(command)
                 else:
                     print("\n %s is not a valid UMD IP" % (ip_addr))
-            elif (valid_mac(user_input)):
+            elif valid_mac(user_input):
                 mac_addr = macStringCoversion(user_input)
                 command = dupe + " -m " + mac_addr
                 searchMacTable(command)
@@ -232,4 +235,6 @@ def mainFunction():
                 print("%s is neither an IP or MAC. Please try again" % (user_input))
                 continue
 
-mainFunction()
+# if nocut3.py is called directly, run mainFunction
+if __name__ == "__main__":
+    mainFunction()

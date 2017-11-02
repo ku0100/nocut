@@ -7,14 +7,14 @@ import socket
 
 from netaddr import *
 
-filepath = '/usr/local/telecom/wp/'
+filepath = "/usr/local/telecom/wp/"
 
 def vlanIDLocator(vlan_name):
     networks_file = filepath + "networks"
     # Open networks.txt read-only
     wp_networks = open(networks_file, "r")
     for i in wp_networks:
-        if(i.startswith(vlan_name)):
+        if i.startswith(vlan_name):
             vlans = i.split()
             wp_networks.close()
             # Return VLAN column value from networks.txt
@@ -31,12 +31,12 @@ class IpFinder:
             lines = wp_ips.readlines()
             self.umd_public_ip = False
             for line in lines:
-                if (line.startswith("#") == False):
+                if line.startswith("#") == False:
                     columns = line.split()
-                    if (len(columns) > 4 and columns[2] == "range"):
+                    if len(columns) > 4 and columns[2] == "range":
                         # Netaddr reference (IPNetwork)
                         ip_network = IPNetwork(columns[4])
-                        if (ip_addr in ip_network):
+                        if ip_addr in ip_network:
                             self.umd_public_ip = True
                             self.vlan_name = columns[0]
                             self.vlan_id = vlanIDLocator(self.vlan_name)
@@ -70,11 +70,11 @@ class BldgFinder:
         css_pattern = re.compile("1011[a-z]")
         ptx_pattern = re.compile("1010[a-z]")
         fw_pattern = re.compile("(\d{4})[a-z]")
-        if (bldg_pattern.match(vlan_name)
+        if bldg_pattern.match(vlan_name
             or backbone_pattern.match(vlan_name)):
             bldg_number = re.sub("\D", "", vlan_name)
             return bldg_number
-        elif (wifi_pattern.match(vlan_name)):
+        elif wifi_pattern.match(vlan_name):
             bldg_number = "wireless"
             return bldg_number
         elif css_pattern.match(vlan_name):
@@ -92,20 +92,20 @@ class BldgFinder:
             return False
 
 # Python ipinfo.py
-if (__name__ == "__main__"):
+if __name__ == "__main__":
     os.system("clear")
     while True:
         valid_ip = input("\nEnter an IP address or type 'exit' to stop:\n> ")
         valid_ip = valid_ip.replace(" ", "")
-        if (valid_ip == ""):
+        if valid_ip == "":
             continue
-        elif (valid_ip.lower() == "exit"):
+        elif valid_ip.lower() == "exit":
             sys.exit("Exiting the program!")
         # Netaddr reference (.valid_ipv4)
-        elif (valid_ipv4(valid_ip)):
+        elif valid_ipv4(valid_ip):
             ip_addr = IPNetwork(valid_ip)
             uip = IpFinder(ip_addr)
-            if (uip.umd_public_ip == False):
+            if uip.umd_public_ip == False:
                 print("%s : Not a valid UMD IP, please enter again"
                     % (valid_ip))
                 continue
