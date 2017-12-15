@@ -125,9 +125,11 @@ def show_sw_info (line,command=0):
                                         print " Date         : ",sw_info[0]
                                         sw_connect = "~kuwillia/Python/ssh2.pl "+sw[0]+' '+mac_addr
                                         print "------------------------------------------------"
-                                        print " Searching    :", sw[0]
+                                        print " Searching    : ", sw[0]
                                         output = os.popen(sw_connect).read()
                                         print output ,"------------------------------------------------"
+										#Pinnacle Info
+                                        print(pinnacle_get_jackID(sw[0],sw[2]))
                                         break
                                 else:
                                         print "\n Cannot find in building ", bld_guess
@@ -193,8 +195,18 @@ if len(sys.argv) > 1:
 
 	elif valid_jackID(user_input):
 			jackID = user_input
-			print(pinnacle_get_switchport(jackID))
-                        print(pinnacle_get_IP(jackID))
+			# Check if the jack is active first to avoid printing unnecessary output. 
+			if pinnacle_get_switchport(jackID) == " Jack ID not active":
+				print(pinnacle_get_switchport(jackID))
+
+			
+			else:
+				print(pinnacle_get_switchport(jackID))
+				print_ips(pinnacle_get_IP(jackID))
+				print(pinnacle_get_room(jackID))
+				print(pinnacle_get_AU(jackID))
+				print('\n')
+
 
 	else:
 			print  user_input, "neither IP or MAC. please try again"
@@ -204,15 +216,15 @@ if len(sys.argv) > 1:
 else:
 
 	os.system('clear')
-	print ('#-------------------------------------------------------#')
-	print ('#  Hi. HJ\'s NoCut! tracking switch port with mac or IP')
-	print ('#  Input any form of MAC or IP address - ddomu@umd.edu  ')
-	print ('#-------------------------------------------------------#\n')
+	print ('#-----------------------------------------------------------------#')
+	print ('#  Hi. HJ\'s NoCut! Locate a switchport using mac, IP, or Jack ID  #')
+	print ('#  Input any form of MAC, IP address, or Jack ID - ddomu@umd.edu  #')
+	print ('#-----------------------------------------------------------------#\n')
 
 	while True:
 
 		# Input mac or ip
-		user_input = raw_input('\n ip address or mac address or exit to quit:')
+		user_input = raw_input('\n Enter an ip address, mac address, or Jack ID to search. \n To exit the program, just type "exit" to quit:')
 		user_input = user_input.replace(" ","")  #remove all space
 
 		if user_input.lower() == "exit":
@@ -234,6 +246,11 @@ else:
 				mac_addr = mac_to_string(user_input)
 				command = dupe+' -m '+mac_addr
 				search_mac_table(command)
+
+		elif valid_jackID(user_input):
+				jackID = user_input
+				print(pinnacle_get_switchport(jackID))
+				print_ips(pinnacle_get_IP(jackID))
 
 		else:
 				print  user_input, "neither IP or MAC. please try again"

@@ -13,6 +13,21 @@ import os,sys,re
 filepath = '/usr/local/telecom/wp/'
 pinnaclefile = "/net/tms/pinnacle/downloads/prod/current/"
 
+# What we want to get from Pinnacle:
+#_________________________________________________________
+#	INPUT				         OUTPUT                   #
+#  Jack ID        |  Switch and port, IP addresses, owner #
+#  IP/MAC         |  Jack ID, IP addresses, owner         #
+# Switch and port |  Jack ID, IP addresses, owner         #
+#_________________________________________________________#
+#
+#Pinnacle data function structure
+# Functions:
+#	1. get switch and port from Jack ID
+#	2. get IP addresses from Jack ID
+#	3. get Jack ID owner from Jack ID
+#	4. get Jack ID from Switch and Port
+
 def pinnacle_get_switchport(jackID):
 
 	jackID = jackID.upper()
@@ -28,32 +43,117 @@ def pinnacle_get_switchport(jackID):
 			pinnacle_ports.close()
                         return "Switch     : " + switch + "\n" + "Interface  : " + module + "/" + ports[1] # 003-1f-sw1 1/14)
 	pinnacle_ports.close()
-        return "Jack ID not active"
+        return " Jack ID not active"
+		
+def pinnacle_get_jackID(switch,switchport):
+
+	switch = switch.upper()
+	
+	#Get the module from the port input
+	switchport = switchport.split("/")
+	module = switchport[0][-1]
+	port = switchport[1]
+
+	#Combine switch name and module number to lookup in Pinnacle data
+	switchANDmodule = switch + "_" + module
+
+	pinnacle_ports_file = pinnaclefile + "Export_Ports"
+	
+	# Open Pinncale_Ports file read-only
+	pinnacle_ports = open(pinnacle_ports_file, "r")
+	
+	#Loop through Export_Ports looking for a line with "switch name + module"
+	for i in pinnacle_ports:
+		if switchANDmodule in i:
+			# Now check to see if the line has the correct interface number
+			ports = i.split()
+			if ports[1] == port:
+				if len(ports) > 2:
+					return " Jack ID      :  " + ports[2]
+				else:
+					return "Jack ID not active"
+
+	pinnacle_ports.close()
+	return " Jack ID not active"
+
 
 def pinnacle_get_IP(jackID):
 
-        def print_ips(ipList):
-                        for eachIP in ipList:
-                                        print "IP: " + str(eachIP)
 	jackID = jackID.upper()
 	pinnacle_IP_file = pinnaclefile + "Export_IP_Assignments"
 	# Open Export_IP_Assignments file read-only
 	pinnacle_IPs = open(pinnacle_IP_file, "r")
 	# Create a list to add the IP addresses found to, since there may be >1
-        ipAddresses = []
-        for i in pinnacle_IPs:
-			if jackID in i:
-					line = i.split(',')
-					# Found matching line with Jack ID, return the IP address
-					ipAddresses.append(line[0])
-        # Close the file
-        pinnacle_IPs.close()
-        
-        # Check if we found any IPs and return them, or a message saying none were found
-        if not ipAddresses:
-	                return "Jack doesn't have an IP address provisioned"
-        else:
-                        return print_ips(ipAddresses)
+	ipAddresses = []
+	for i in pinnacle_IPs:
+		if jackID in i:
+				line = i.split(',')
+				# Found matching line with Jack ID, return the IP address
+				ipAddresses.append(line[0])
+	# Close the file
+	pinnacle_IPs.close()
+	# Check if we found any IPs and return them, or return a message saying none were found
+	if len(ipAddresses) == 0:
+				return "Jack doesn't have an IP address provisioned"
+	else:
+				return ipAddresses
+
+def pinnacle_get_switchport(jackID):
+
+	jackID = jackID.upper()
+	pinnacle_ports_file = pinnaclefile + "Export_Ports"
+	# Open Pinncale_Ports file read-only
+	pinnacle_ports = open(pinnacle_ports_file, "r")
+	for i in pinnacle_ports:
+		if jackID in i:
+			# Found matching line with Jack ID, save the switch name, module number, and interface number
+                        ports = i.split()
+			module = ports[0][-1] # equal 1
+			switch = ports[0][:-2] # 003-1f-sw1
+			pinnacle_ports.close()
+                        return "Switch     : " + switch + "\n" + "Interface  : " + module + "/" + ports[1] # 003-1f-sw1 1/14)
+	pinnacle_ports.close()
+        return " Jack ID not active"
+
+def pinnacle_get_room(jackID):
+	jackID = jackID.upper()
+	pinnacle_ports_file = pinnaclefile + "Export_Jacks"
+	# Open Pinncale_Ports file read-only
+	pinnacle_ports = open(pinnacle_ports_file, "r")
+	for i in pinnacle_ports:
+		if jackID in i:
+			# Found matching line with Jack ID, save the room
+			ports = i.split()
+			room = ports[2]
+			pinnacle_ports.close()
+			return "Room       : " + room
+			
+	pinnacle_ports.close()
+	return " Couldn't find the room this jack is in."
+	
+def pinnacle_get_AU(jackID):
+	jackID = jackID.upper()
+	pinnacle_ports_file = pinnaclefile + "Export_Jack_Services"
+	# Open Pinncale_Ports file read-only
+	pinnacle_ports = open(pinnacle_ports_file, "r")
+	for i in pinnacle_ports:
+		if jackID in i:
+			# Found matching line with Jack ID, save the room
+			ports = i.split(',')
+			dateActivated = ports[3]
+			AU = ports[4]
+			pinnacle_ports.close()
+			return "Date       : " + dateActivated + '\n' + "AU         : " + AU
+			
+	pinnacle_ports.close()
+	return " Couldn't find the AU information."
+
+def print_ips(ipList):
+	if ipList == "Jack doesn't have an IP address provisioned":
+		print "IP         : None Provisioned"
+	else:
+		for eachIP in ipList:
+			print "IP         : " + str(eachIP)
 
 
 def find_vlan_id (vlan_name):
